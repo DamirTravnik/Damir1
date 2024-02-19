@@ -1,0 +1,52 @@
+import requests
+
+
+class NasaClient:
+    def fetch_nasa_images(self, query, year_start=None, year_end=None, media_type=None, limit=None):
+        base_url = "https://images-api.nasa.gov/search"
+        params = self._build_params(query, year_start, year_end, media_type)
+
+        try:
+            response = requests.get(base_url, params=params)
+
+            if response.status_code == 200:
+                data = response.json()
+                result_items = data["collection"]["items"]
+                result_items = result_items[:limit] if limit else result_items
+                self._print_results(result_items)
+                return result_items
+            else:
+                print(f"Error: {response.status_code}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+    def _print_results(self, result_items):
+        if result_items:
+            print("\nResults:\n")
+            for item in result_items:
+                title = item["data"][0]["title"]
+                links = item.get("links", [])
+                hrefs = [link["href"] for link in links if link.get("rel") == "preview"]
+                if hrefs:
+                    print(f"{title}: {hrefs[0]}")
+                else:
+                    print(f"{title}: No preview link available")
+        else:
+            print("No results found.")
+
+    def _build_params(self, query, year_start, year_end, media_type):
+        params = {"q": query}
+
+        if year_start is not None:
+            params.update({"year_start": year_start})
+        if year_end is not None:
+            params.update({"year_end": year_end})
+        if media_type is not None:
+            params.update({"media_type": media_type})
+
+        return params
+
+
+client = NasaClient()
+q1_results = client.fetch_nasa_images("mars surface", 2018, 2018, limit=5)
+q2_results = client.fetch_nasa_images("mars", 2018, 2018, "video")
