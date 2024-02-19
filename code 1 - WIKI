@@ -1,0 +1,82 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
+
+class WikipediaPage:
+    def __init__(self, driver):
+        self.driver = driver
+
+    def open_main_page(self):
+        self.driver.get("https://en.wikipedia.org/wiki/Main_Page")
+
+    def open_random_article(self):
+        random_page_link = self.driver.find_element(By.ID, "n-randompage")
+        random_page_url = random_page_link.find_element(By.TAG_NAME, "a").get_attribute(
+            "href"
+        )
+        # random_page_url = "https://en.wikipedia.org/wiki/German_language"
+        self.driver.get(random_page_url)
+
+    def open_page(self, url):
+        self.driver.get(url)
+
+    def get_page_title(self):
+        h1_element = self.driver.find_element(By.CLASS_NAME, "firstHeading")
+        return h1_element.text
+
+    def get_first_link_text_and_url(self):
+        try:
+            first_link = self.driver.find_element(
+                By.CSS_SELECTOR, "div.mw-content-ltr.mw-parser-output > p > a"
+            )
+            link_text = first_link.text
+            link_url = first_link.get_attribute("href")
+            return link_text, link_url
+        except NoSuchElementException:
+            return None, None
+
+    def get_not_first_link_text_and_url(self):
+        try:
+            first_link = self.driver.find_element(
+                By.CSS_SELECTOR, "div.mw-content-ltr.mw-parser-output > p > a:first-child"
+            )
+            link_text = first_link.text
+            link_url = first_link.get_attribute("href")
+            return link_text, link_url
+        except NoSuchElementException:
+            return None, None
+
+driver = webdriver.Chrome()
+driver.implicitly_wait(10)  # Wait for up to 10 seconds for elements to be found
+
+wiki_page = WikipediaPage(driver)
+wiki_page.open_main_page()
+wiki_page.open_random_article()
+page_title = wiki_page.get_page_title()
+
+redirects = 0
+visited = set()
+while page_title != "Philosophy":
+    link_text, link_url = wiki_page.get_first_link_text_and_url()
+
+    if link_url in visited:
+        print("Cycle detected!!!")
+        link_text, link_url = wiki_page.get_not_first_link_text_and_url()
+
+    if link_text is not None and link_url is not None:
+        visited.add(link_url)
+
+        print("First Link Text:", link_text)
+        print("First Link URL:", link_url)
+
+        wiki_page.open_page(link_url)
+
+        redirects += 1
+
+        page_title = wiki_page.get_page_title()
+    else:
+        print("No valid link found. Exiting loop.")
+        break
+
+print("Number of redirects:", redirects)
+driver.quit()
